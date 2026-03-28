@@ -5,6 +5,7 @@ import CustomizationBar from "@/components/CustomizationBar";
 import ResumeBuilder from "@/components/ResumeBuilder";
 import CVBuilder from "@/components/CVBuilder";
 import CoverLetterBuilder from "@/components/CoverLetterBuilder";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"resume" | "cv" | "cover_letter">("resume");
@@ -75,7 +76,8 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <ThemeSwitcher />
           <button 
             onClick={() => setShowPreview(!showPreview)}
             className={`p-2 rounded-lg ${showPreview ? "bg-primary text-white" : "bg-white/5 text-slate-400"}`}
@@ -243,24 +245,31 @@ export default function Home() {
               </h3>
             </div>
             
-            <div className="flex gap-4">
-              <button 
-                onClick={handleCopy}
-                disabled={!previewData}
-                className="group relative px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-slate-400 group-hover:text-white" />}
-                <span className="text-xs font-bold">{copied ? "Copied!" : "Source"}</span>
-              </button>
-              
-              <button 
-                onClick={downloadPDF}
-                disabled={!previewData}
-                className="group px-6 py-2.5 bg-gradient-to-r from-primary to-indigo-600 rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed text-white"
-              >
-                <Download className="w-4 h-4" />
-                <span className="text-sm font-bold tracking-wide uppercase">Download PDF</span>
-              </button>
+            <div className="flex gap-6 items-center">
+              <div className="flex items-center gap-2 border-r border-white/10 pr-6 mr-2">
+                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Aesthetics</span>
+                 <ThemeSwitcher />
+              </div>
+
+              <div className="flex gap-4">
+                <button 
+                  onClick={handleCopy}
+                  disabled={!previewData}
+                  className="group relative px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-slate-400 group-hover:text-white" />}
+                  <span className="text-xs font-bold">{copied ? "Copied!" : "Source"}</span>
+                </button>
+                
+                <button 
+                  onClick={downloadPDF}
+                  disabled={!previewData}
+                  className="group px-6 py-2.5 bg-gradient-to-r from-primary to-indigo-600 rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed text-white"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="text-sm font-bold tracking-wide uppercase">Download PDF</span>
+                </button>
+              </div>
             </div>
           </div>
 
