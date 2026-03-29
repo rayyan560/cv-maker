@@ -51,7 +51,7 @@ export default function Home() {
       filename: `AI_Professional_${activeTab}.pdf`,
       image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true }, // CORs for icons
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' as const }
     };
     
     html2pdf().from(element).set(opt).save();
