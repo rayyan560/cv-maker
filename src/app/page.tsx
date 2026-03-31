@@ -42,50 +42,29 @@ export default function Home() {
       const html2pdfModule = await import("html2pdf.js");
       const html2pdf = html2pdfModule.default || html2pdfModule;
 
-      // 4. Memory Management: Create temporary container
-      const tempContainer = document.createElement("div");
-      tempContainer.style.position = "absolute";
-      tempContainer.style.left = "-9999px";
-      tempContainer.style.top = "0";
-      tempContainer.style.width = "210mm";
-      tempContainer.style.backgroundColor = "white";
-      
-      // Extract computed tailwind styles from iframe to keep accurate formatting
-      let tailwindStyles = "";
-      if (iframeRef.current?.contentDocument) {
-        const styles = Array.from(iframeRef.current.contentDocument.querySelectorAll("style"));
-        tailwindStyles = styles.map(s => s.outerHTML).join("\n");
-      }
+      // 1. Target Container: Get cv-preview-container from iframe
+      const iframeDoc = iframeRef.current?.contentDocument;
+      if (!iframeDoc) throw new Error("Iframe not accessible");
+      const element = iframeDoc.getElementById("cv-preview-container");
+      if (!element) throw new Error("cv-preview-container not found");
 
-      tempContainer.innerHTML = `
-        ${tailwindStyles}
-        <div style="font-family: 'Inter', sans-serif; padding: 20px;">
-          ${previewData}
-        </div>
-      `;
-      document.body.appendChild(tempContainer);
+      // 3. Heavy-Duty Async Fix: Give UI time to update "Generating PDF..." state
+      await new Promise(resolve => setTimeout(resolve, 200));
 
-      // 3. DOM Optimization: Allow elements and styles to fully settle
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // 5. Fix html2pdf Options precisely as requested
+      // 2. HTML2PDF Config (The Sweet Spot)
       const opt = {
         margin: 10,
         filename: 'my-cv.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
+        image: { type: 'jpeg', quality: 0.95 }, 
+        html2canvas: { scale: 2.0, useCORS: true, logging: false }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
 
-      // 2. Async/Await generation
-      await html2pdf().from(tempContainer).set(opt).save();
-
-      // 4. Memory Management: Clean up temporary clone immediately after saving
-      document.body.removeChild(tempContainer);
+      // Generate & Save PDF safely without crashing
+      await html2pdf().from(element).set(opt).save();
 
     } catch (error) {
       console.error("PDF generation failed:", error);
-      // 2. Error Handling: Alert user
       alert("Failed to generate PDF. Please try again.");
     } finally {
       setIsDownloading(false);
@@ -305,7 +284,7 @@ export default function Home() {
                 >
                   {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                   <span className="text-sm font-bold tracking-wide uppercase">
-                    {isDownloading ? "Processing..." : "Download PDF"}
+                    {isDownloading ? "Generating PDF..." : "Download PDF"}
                   </span>
                 </button>
               </div>
@@ -344,7 +323,7 @@ export default function Home() {
                         </style>
                       </head>
                       <body class="bg-white">
-                        <div style="min-height: 100vh;">
+                        <div id="cv-preview-container" style="min-height: 100vh; padding: 1px;">
                           ${previewData}
                         </div>
                       </body>

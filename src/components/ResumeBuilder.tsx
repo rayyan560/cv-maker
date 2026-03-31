@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Loader2, Sparkles, User, Briefcase, Mail, Phone, MapPin } from "lucide-react";
+import { Loader2, Sparkles, User, Briefcase, Mail, Phone, MapPin, Camera, X } from "lucide-react";
 
 export default function ResumeBuilder({ setPreviewData, setIsGenerating, customization }: any) {
   const [loading, setLoading] = useState(false);
@@ -14,6 +14,20 @@ export default function ResumeBuilder({ setPreviewData, setIsGenerating, customi
     experience: "",
     skills: "",
   });
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setProfileImage(url);
+    }
+  };
+
+  const removeImage = () => {
+    if (profileImage) URL.revokeObjectURL(profileImage);
+    setProfileImage(null);
+  };
 
   const generateWithAI = async () => {
     if (!formData.name) return alert("Please enter your name");
@@ -40,6 +54,10 @@ Smart Content Generation (Resume):
 
 Strictly use Tailwind CSS classes. No broken symbols. Ensure the ${primaryColor} color is applied to all accents, icons, and progress bars. 
 Return ONLY clean, responsive HTML contained within a single <div>. No markdown code blocks.
+
+${profileImage ? `CRITICAL RULE for PROFILE PHOTO:
+The user has provided a profile photo. You MUST include this exact HTML element in the top-left or top-right of the resume header or sidebar (depending on the layout):
+<img src="${profileImage}" style="width: 120px; height: 120px; object-fit: cover; border-radius: 50%;" alt="Profile Photo" />` : ''}
 
 User Data:
 - Name: ${formData.name}
@@ -93,6 +111,34 @@ User Data:
                 className="w-full bg-slate-800/50 border border-white/5 p-3 pl-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 text-white placeholder:text-slate-600 transition-all"
                 onChange={(e) => setFormData({...formData, title: e.target.value})}
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Profile Photo Upload */}
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Profile Photo (Optional)</label>
+          <div className="flex items-center gap-4">
+            {profileImage ? (
+              <div className="relative group">
+                <img src={profileImage} alt="Preview" className="w-16 h-16 rounded-full object-cover border-2 border-primary/50" />
+                <button 
+                  onClick={removeImage}
+                  className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                  title="Remove Photo"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <label className="cursor-pointer relative overflow-hidden group w-16 h-16 rounded-full border-2 border-dashed border-white/20 flex flex-col items-center justify-center hover:border-primary/50 hover:bg-white/5 transition-all">
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                <Camera className="w-5 h-5 text-slate-500 group-hover:text-primary transition-colors mb-1" />
+                <span className="text-[10px] text-slate-500 font-medium">Upload</span>
+              </label>
+            )}
+            <div className="text-xs text-slate-500 flex-1">
+              Add a professional photo to stand out. It will automatically be formatted perfectly in the chosen layout.
             </div>
           </div>
         </div>
