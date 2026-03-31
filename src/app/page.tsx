@@ -15,6 +15,7 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(false); // Mobile: Toggle between form and preview
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   
   // Customization state
@@ -31,15 +32,63 @@ export default function Home() {
   };
 
   const downloadPDF = async () => {
-    if (!previewData || !iframeRef.current) return;
+    // 1. Client-Side Only Check
+    if (typeof window === "undefined" || !previewData) return;
+    
+    setIsDownloading(true);
     
     try {
-      const iframeWindow = iframeRef.current.contentWindow;
-      if (iframeWindow && (iframeWindow as any).downloadPDF) {
-        (iframeWindow as any).downloadPDF(`AI_Professional_${activeTab}.pdf`);
+      // Dynamic import ensures Next.js SSR does not touch html2pdf
+      const html2pdfModule = await import("html2pdf.js");
+      const html2pdf = html2pdfModule.default || html2pdfModule;
+
+      // 4. Memory Management: Create temporary container
+      const tempContainer = document.createElement("div");
+      tempContainer.style.position = "absolute";
+      tempContainer.style.left = "-9999px";
+      tempContainer.style.top = "0";
+      tempContainer.style.width = "210mm";
+      tempContainer.style.backgroundColor = "white";
+      
+      // Extract computed tailwind styles from iframe to keep accurate formatting
+      let tailwindStyles = "";
+      if (iframeRef.current?.contentDocument) {
+        const styles = Array.from(iframeRef.current.contentDocument.querySelectorAll("style"));
+        tailwindStyles = styles.map(s => s.outerHTML).join("\n");
       }
-    } catch (e) {
-      console.error("PDF generation failed:", e);
+
+      tempContainer.innerHTML = `
+        ${tailwindStyles}
+        <div style="font-family: 'Inter', sans-serif; padding: 20px;">
+          ${previewData}
+        </div>
+      `;
+      document.body.appendChild(tempContainer);
+
+      // 3. DOM Optimization: Allow elements and styles to fully settle
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 5. Fix html2pdf Options precisely as requested
+      const opt = {
+        margin: 10,
+        filename: 'my-cv.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
+      };
+
+      // 2. Async/Await generation
+      await html2pdf().from(tempContainer).set(opt).save();
+
+      // 4. Memory Management: Clean up temporary clone immediately after saving
+      document.body.removeChild(tempContainer);
+
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      // 2. Error Handling: Alert user
+      alert("Failed to generate PDF. Please try again.");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -251,11 +300,13 @@ export default function Home() {
                 
                 <button 
                   onClick={downloadPDF}
-                  disabled={!previewData}
+                  disabled={!previewData || isDownloading}
                   className="group px-6 py-2.5 bg-gradient-to-r from-primary to-indigo-600 rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed text-white"
                 >
-                  <Download className="w-4 h-4" />
-                  <span className="text-sm font-bold tracking-wide uppercase">Download PDF</span>
+                  {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  <span className="text-sm font-bold tracking-wide uppercase">
+                    {isDownloading ? "Processing..." : "Download PDF"}
+                  </span>
                 </button>
               </div>
             </div>
@@ -286,25 +337,11 @@ export default function Home() {
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                         <script src="https://cdn.tailwindcss.com"></script>
                         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-                        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
                         <style>
                           body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
                           .sidebar-column { height: 100vh; }
                           * { border-color: #e5e7eb; transition: all 0.3s ease; }
                         </style>
-                        <script>
-                          window.downloadPDF = function(filename) {
-                            var element = document.body;
-                            var opt = {
-                              margin: [0, 0],
-                              filename: filename,
-                              image: { type: 'jpeg', quality: 0.98 },
-                              html2canvas: { scale: 2, useCORS: true },
-                              jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-                            };
-                            html2pdf().from(element).set(opt).save();
-                          }
-                        </script>
                       </head>
                       <body class="bg-white">
                         <div style="min-height: 100vh;">
