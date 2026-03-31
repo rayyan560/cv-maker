@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Loader2, Sparkles, User, Briefcase, Mail, Send, Building } from "lucide-react";
 
-export default function CoverLetterBuilder({ setPreviewData, customization }: any) {
+export default function CoverLetterBuilder({ setPreviewData, setIsGenerating, customization }: any) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -18,6 +18,7 @@ export default function CoverLetterBuilder({ setPreviewData, customization }: an
   const generateWithAI = async () => {
     if (!formData.name || !formData.company) return alert("Please enter your name and target company");
     setLoading(true);
+    if (setIsGenerating) setIsGenerating(true);
     try {
       const { primaryColor, layoutStyle, bgStyle } = customization;
       
@@ -65,6 +66,7 @@ User Data:
       console.error(e);
     }
     setLoading(false);
+    if (setIsGenerating) setIsGenerating(false);
   };
 
   return (
@@ -123,8 +125,17 @@ User Data:
       <button onClick={generateWithAI} disabled={loading} className="w-full mt-2 group relative overflow-hidden rounded-xl">
         <div className="absolute inset-0 bg-gradient-to-r from-primary via-indigo-600 to-primary animate-shimmer" />
         <div className="relative p-4 flex items-center justify-center gap-3 text-white font-bold tracking-widest uppercase text-sm">
-          {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <Send className="w-4 h-4" />}
-          <span>Generate Cover Letter</span>
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin w-5 h-5" />
+              <span>Generating...</span>
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4" />
+              <span>Generate Cover Letter</span>
+            </>
+          )}
         </div>
       </button>
     </div>

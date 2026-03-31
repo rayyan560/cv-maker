@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { Copy, Download, FileText, FileBadge, Mail, Check, Settings, Eye, Menu, X, ArrowLeft } from "lucide-react";
+import { Copy, Download, FileText, FileBadge, Mail, Check, Settings, Eye, Menu, X, ArrowLeft, Github, Loader2 } from "lucide-react";
 import CustomizationBar from "@/components/CustomizationBar";
 import ResumeBuilder from "@/components/ResumeBuilder";
 import CVBuilder from "@/components/CVBuilder";
@@ -14,6 +14,8 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(false); // Mobile: Toggle between form and preview
+  const [isGenerating, setIsGenerating] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   
   // Customization state
   const [primaryColor, setPrimaryColor] = useState("blue");
@@ -29,32 +31,16 @@ export default function Home() {
   };
 
   const downloadPDF = async () => {
-    if (!previewData) return;
+    if (!previewData || !iframeRef.current) return;
     
-    // Dynamically import html2pdf only on client side
-    const html2pdf = (await import("html2pdf.js")).default;
-    
-    const element = document.createElement("div");
-    // We need to inject Tailwind to ensure styles are applied in the PDF
-    element.innerHTML = `
-      <style>
-        @import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');
-        body { margin: 0; padding: 0; }
-      </style>
-      <div class="p-0 m-0">
-        ${previewData}
-      </div>
-    `;
-    
-    const opt = {
-      margin: 0,
-      filename: `AI_Professional_${activeTab}.pdf`,
-      image: { type: 'jpeg' as const, quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true }, // CORs for icons
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' as const }
-    };
-    
-    html2pdf().from(element).set(opt).save();
+    try {
+      const iframeWindow = iframeRef.current.contentWindow;
+      if (iframeWindow && (iframeWindow as any).downloadPDF) {
+        (iframeWindow as any).downloadPDF(`AI_Professional_${activeTab}.pdf`);
+      }
+    } catch (e) {
+      console.error("PDF generation failed:", e);
+    }
   };
 
   return (
@@ -190,7 +176,8 @@ export default function Home() {
                 setPreviewData={(html: string) => { 
                   setPreviewData(html);
                   if (window.innerWidth < 1024) setShowPreview(true);
-                }} 
+                }}
+                setIsGenerating={setIsGenerating}
                 customization={{ primaryColor, layoutStyle, bgStyle }} 
               />
             )}
@@ -200,6 +187,7 @@ export default function Home() {
                   setPreviewData(html);
                   if (window.innerWidth < 1024) setShowPreview(true);
                 }}
+                setIsGenerating={setIsGenerating}
                 customization={{ primaryColor, layoutStyle, bgStyle }} 
               />
             )}
@@ -209,6 +197,7 @@ export default function Home() {
                   setPreviewData(html);
                   if (window.innerWidth < 1024) setShowPreview(true);
                 }}
+                setIsGenerating={setIsGenerating}
                 customization={{ primaryColor, layoutStyle, bgStyle }} 
               />
             )}
@@ -253,12 +242,11 @@ export default function Home() {
 
               <div className="flex gap-4">
                 <button 
-                  onClick={handleCopy}
-                  disabled={!previewData}
-                  className="group relative px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed"
+                  onClick={() => window.open("https://github.com/rayyan560/cv-maker", "_blank")}
+                  className="group relative px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-2"
                 >
-                  {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-slate-400 group-hover:text-white" />}
-                  <span className="text-xs font-bold">{copied ? "Copied!" : "Source"}</span>
+                  <Github className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                  <span className="text-xs font-bold text-slate-400 group-hover:text-white">Source Code</span>
                 </button>
                 
                 <button 
@@ -287,6 +275,7 @@ export default function Home() {
               <div className="w-full lg:max-w-[850px] aspect-[1/1.414] lg:h-full shadow-[0_0_100px_rgba(0,0,0,0.5)] rounded-2xl border border-white/5 overflow-hidden bg-white relative group">
                 {/* Responsive Frame (Iframe) */}
                 <iframe 
+                  ref={iframeRef}
                   className="w-full h-full border-none"
                   title="Document Preview"
                   srcDoc={`
@@ -297,18 +286,41 @@ export default function Home() {
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                         <script src="https://cdn.tailwindcss.com"></script>
                         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
                         <style>
                           body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
                           .sidebar-column { height: 100vh; }
-                          * { transition: all 0.3s ease; }
+                          * { border-color: #e5e7eb; transition: all 0.3s ease; }
                         </style>
+                        <script>
+                          window.downloadPDF = function(filename) {
+                            var element = document.body;
+                            var opt = {
+                              margin: [0, 0],
+                              filename: filename,
+                              image: { type: 'jpeg', quality: 0.98 },
+                              html2canvas: { scale: 2, useCORS: true },
+                              jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+                            };
+                            html2pdf().from(element).set(opt).save();
+                          }
+                        </script>
                       </head>
-                      <body className="bg-white">
-                        ${previewData}
+                      <body class="bg-white">
+                        <div style="min-height: 100vh;">
+                          ${previewData}
+                        </div>
                       </body>
                     </html>
                   `}
                 />
+                
+                {isGenerating && (
+                  <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center transition-all duration-300">
+                    <Loader2 className="animate-spin w-12 h-12 text-primary mb-4" />
+                    <span className="font-bold text-white text-sm tracking-widest uppercase">Generating...</span>
+                  </div>
+                )}
                 
                 {/* Frame Hover Overlay Controls (Optional - can add zoom etc) */}
                 <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition duration-500">

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Loader2, Sparkles, User, GraduationCap, BookOpen, Quote, Mail, Phone, MapPin } from "lucide-react";
 
-export default function CVBuilder({ setPreviewData, customization }: any) {
+export default function CVBuilder({ setPreviewData, setIsGenerating, customization }: any) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -20,6 +20,7 @@ export default function CVBuilder({ setPreviewData, customization }: any) {
   const generateWithAI = async () => {
     if (!formData.name) return alert("Please enter your name");
     setLoading(true);
+    if (setIsGenerating) setIsGenerating(true);
     try {
       const { primaryColor, layoutStyle, bgStyle } = customization;
       
@@ -67,6 +68,7 @@ User Data:
       console.error(e);
     }
     setLoading(false);
+    if (setIsGenerating) setIsGenerating(false);
   };
 
   return (
@@ -119,8 +121,17 @@ User Data:
       <button onClick={generateWithAI} disabled={loading} className="w-full mt-2 group relative overflow-hidden rounded-xl">
         <div className="absolute inset-0 bg-gradient-to-r from-primary via-indigo-600 to-primary bg-[length:200%_100%] animate-shimmer" />
         <div className="relative p-4 flex items-center justify-center gap-3 text-white font-bold tracking-widest uppercase text-sm">
-          {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
-          <span>Generate Academic CV</span>
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin w-5 h-5" />
+              <span>Generating...</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-5 h-5" />
+              <span>Generate Academic CV</span>
+            </>
+          )}
         </div>
       </button>
     </div>

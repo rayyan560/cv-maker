@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Loader2, Sparkles, User, Briefcase, Mail, Phone, MapPin } from "lucide-react";
 
-export default function ResumeBuilder({ setPreviewData, customization }: any) {
+export default function ResumeBuilder({ setPreviewData, setIsGenerating, customization }: any) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -18,6 +18,7 @@ export default function ResumeBuilder({ setPreviewData, customization }: any) {
   const generateWithAI = async () => {
     if (!formData.name) return alert("Please enter your name");
     setLoading(true);
+    if (setIsGenerating) setIsGenerating(true);
     try {
       const { primaryColor, layoutStyle, bgStyle } = customization;
       
@@ -63,6 +64,7 @@ User Data:
       console.error(e);
     }
     setLoading(false);
+    if (setIsGenerating) setIsGenerating(false);
   };
 
   return (
@@ -149,7 +151,7 @@ User Data:
           {loading ? (
             <>
               <Loader2 className="animate-spin w-5 h-5 text-white/80" />
-              <span>Architecting Resume...</span>
+              <span>Generating...</span>
             </>
           ) : (
             <>
