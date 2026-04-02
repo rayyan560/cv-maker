@@ -379,22 +379,33 @@ export default function Home() {
                       <head>
                         <meta charset="UTF-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <script src="https://cdn.tailwindcss.com"></script>
+                        <script src="https://cdn.tailwindcss.com/3.4.1"></script>
                         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+                        <script>
+                          // Force HEX over modern color functions for html2canvas compatibility
+                          window.addEventListener('load', () => {
+                            const styleTags = document.querySelectorAll('style');
+                            styleTags.forEach(tag => {
+                              // Replace oklch/oklab/hwb/etc with a safe fallback color if they appear in any dynamically generated styles
+                              tag.innerHTML = tag.innerHTML.replace(/oklch\([^)]+\)/g, '#1e293b');
+                              tag.innerHTML = tag.innerHTML.replace(/oklab\([^)]+\)/g, '#1e293b');
+                            });
+                          });
+                        </script>
                         <style>
-                          body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+                          body { font-family: 'Inter', sans-serif; overflow-x: hidden; background-color: #ffffff; color: #1e293b; }
                           .sidebar-column { height: 100vh; }
-                          * { border-color: #e5e7eb; transition: all 0.3s ease; }
+                          * { border-color: #e5e7eb !important; transition: none !important; }
                           
                           @media print {
                             @page { margin: 0; size: auto; }
-                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
+                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; background: #fff !important; }
                             #cv-preview-container { padding: 0 !important; width: 100% !important; margin: 0 !important; box-shadow: none !important; border: none !important; }
                           }
                         </style>
                       </head>
                       <body class="bg-white">
-                        <div id="cv-preview-container" style="min-height: 100vh; padding: 1px;">
+                        <div id="cv-preview-container" style="min-height: 100vh; padding: 1px; background-color: #ffffff;">
                           ${previewData}
                         </div>
                       </body>
