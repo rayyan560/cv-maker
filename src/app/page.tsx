@@ -36,13 +36,14 @@ export default function Home() {
     if (typeof window === "undefined" || !previewData || isDownloading) return;
     
     setIsDownloading(true);
+    console.log("Starting PDF generation...");
     
     try {
       // Dynamic import ensures Next.js SSR does not touch html2pdf
       const html2pdfModule = await import("html2pdf.js");
       const html2pdf = html2pdfModule.default || html2pdfModule;
 
-      // 2. Heavy-Duty Async Fix: Give UI time to update "Generating PDF..." state
+      // 2. Heavy-Duty Async Fix: Give UI time to update feedback state
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const iframeDoc = iframeRef.current?.contentDocument;
@@ -51,12 +52,13 @@ export default function Home() {
       // Extract generated compiled styles from Tailwind CDN in iframe
       const tailwindStyles = iframeDoc.querySelector('style[id="tailwind-cdn"]')?.innerHTML || '';
       
-      // Create a temporary container in the MAIN document to avoid iframe freeze bugs
+      // Create a temporary container in the MAIN document to avoid iframe capture bugs
       const tempContainer = document.createElement("div");
+      tempContainer.id = "cv-preview-container"; // ID Verification
       tempContainer.style.position = "absolute";
       tempContainer.style.left = "-9999px";
       tempContainer.style.top = "-9999px";
-      tempContainer.style.width = "800px"; // standard A4 width approx
+      tempContainer.style.width = "800px"; 
       tempContainer.style.backgroundColor = "white";
       
       tempContainer.innerHTML = `
@@ -71,24 +73,47 @@ export default function Home() {
       `;
       document.body.appendChild(tempContainer);
 
+      const element = document.getElementById("cv-preview-container");
+      if (!element) {
+        alert("CV container element not found!");
+        setIsDownloading(false);
+        return;
+      }
+
       const opt = {
-        margin: [10, 0, 10, 0],
-        filename: 'my-professional-document.pdf',
-        image: { type: 'jpeg', quality: 0.98 }, 
-        html2canvas: { scale: 2.0, useCORS: true, logging: false }, 
+        margin: 10,
+        filename: 'my-cv.pdf',
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { 
+          scale: 1.5, // Lower scale to prevent freezing
+          useCORS: true, 
+          letterRendering: true,
+          logging: true // Enable logging to see errors in console
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
 
-      // Generate & Save PDF safely without crashing
-      await html2pdf().from(tempContainer).set(opt).save();
-
-      // Cleanup
-      document.body.removeChild(tempContainer);
+      // 3. Async Execution with Promise chain
+      html2pdf().from(element).set(opt).save()
+        .then(() => {
+          console.log("PDF generated successfully!");
+          if (document.body.contains(tempContainer)) {
+            document.body.removeChild(tempContainer);
+          }
+          setIsDownloading(false);
+        })
+        .catch((err: any) => {
+          console.error("PDF generation failed:", err);
+          alert("Failed to generate PDF. Please try again.");
+          if (document.body.contains(tempContainer)) {
+            document.body.removeChild(tempContainer);
+          }
+          setIsDownloading(false);
+        });
 
     } catch (error) {
       console.error("PDF generation failed:", error);
       alert("Failed to generate PDF. Please try again.");
-    } finally {
       setIsDownloading(false);
     }
   };
@@ -123,9 +148,10 @@ export default function Home() {
           {previewData && (
             <button 
               onClick={downloadPDF}
-              className="p-2 bg-primary/20 text-primary rounded-lg"
+              disabled={isDownloading}
+              className="p-2 bg-primary/20 text-primary rounded-lg disabled:opacity-50"
             >
-              <Download className="w-5 h-5" />
+              {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
             </button>
           )}
         </div>
@@ -306,7 +332,7 @@ export default function Home() {
                 >
                   {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                   <span className="text-sm font-bold tracking-wide uppercase">
-                    {isDownloading ? "Generating PDF..." : "Download PDF"}
+                    {isDownloading ? "Processing..." : "Download PDF"}
                   </span>
                 </button>
               </div>
