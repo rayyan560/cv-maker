@@ -36,101 +36,112 @@ export default function Home() {
     if (typeof window === "undefined" || !previewData || isDownloading) return;
     
     setIsDownloading(true);
-    console.log("Starting PDF generation...");
+    console.log("Starting PDF generation with deep-clean strategy...");
     
+    // Deep Clean Function: Force HEX/RGB over modern color functions
+    const sanitizeElement = (root: HTMLElement) => {
+      const allElements = [root, ...Array.from(root.getElementsByTagName("*"))] as HTMLElement[];
+      allElements.forEach(el => {
+        const style = window.getComputedStyle(el);
+        
+        // Sanitize Color
+        if (style.color && (style.color.includes("oklch") || style.color.includes("oklab"))) {
+          el.style.color = "#1e293b"; // Fallback to safe dark slate
+        }
+        
+        // Sanitize Background
+        if (style.backgroundColor && (style.backgroundColor.includes("oklch") || style.backgroundColor.includes("oklab"))) {
+          el.style.backgroundColor = "#ffffff"; // Fallback to white
+        }
+
+        // Sanitize Borders
+        if (style.borderColor && (style.borderColor.includes("oklch") || style.borderColor.includes("oklab"))) {
+          el.style.borderColor = "#e2e8f0"; // Fallback to light slate
+        }
+
+        // Sanitize SVG Fill/Stroke
+        if (style.fill && (style.fill.includes("oklch") || style.fill.includes("oklab"))) {
+          el.style.fill = "currentColor";
+        }
+      });
+    };
+
     try {
-      // Dynamic import ensures Next.js SSR does not touch html2pdf
+      // Dynamic import of html2pdf.js
       const html2pdfModule = await import("html2pdf.js");
       const html2pdf = html2pdfModule.default || html2pdfModule;
 
-      // 2. Heavy-Duty Async Fix: Give UI time to update feedback state
+      // Small delay for UI state sync
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const iframeDoc = iframeRef.current?.contentDocument;
-      if (!iframeDoc) throw new Error("Iframe not accessible");
-
-      // Extract generated compiled styles from Tailwind CDN in iframe
-      const tailwindStyles = iframeDoc.querySelector('style[id="tailwind-cdn"]')?.innerHTML || '';
+      const originalContainer = iframeDoc?.getElementById("cv-preview-container");
       
-      // Create a temporary container in the MAIN document to avoid iframe capture bugs
-      const tempContainer = document.createElement("div");
-      tempContainer.id = "cv-preview-container"; // ID Verification
-      tempContainer.style.position = "absolute";
-      tempContainer.style.left = "-9999px";
-      tempContainer.style.top = "-9999px";
-      tempContainer.style.width = "800px"; 
-      tempContainer.style.backgroundColor = "white";
-      
-      tempContainer.innerHTML = `
-        <style>
-          body { font-family: 'Inter', sans-serif; }
-          * { border-color: #e5e7eb; }
-          ${tailwindStyles}
-        </style>
-        <div style="padding: 20px;">
-          ${previewData}
-        </div>
-      `;
-      document.body.appendChild(tempContainer);
-
-      const element = document.getElementById("cv-preview-container");
-      if (!element) {
-        alert("CV container element not found!");
+      if (!originalContainer) {
+        alert("CV container element not found for download!");
         setIsDownloading(false);
         return;
       }
+
+      // 2. Clone Strategy: Deep Clone to avoid modifying the original preview
+      const clone = originalContainer.cloneNode(true) as HTMLElement;
+      
+      // Setup the clone inside the main document body for proper style computation
+      clone.id = "cv-pdf-clone";
+      clone.style.position = "absolute";
+      clone.style.left = "-9999px";
+      clone.style.top = "-9999px";
+      clone.style.width = "800px";
+      clone.style.backgroundColor = "#ffffff";
+      
+      // Transfer styles from iframe (Tailwind) to the clone
+      const tailwindStyles = iframeDoc?.querySelector('style')?.innerHTML || '';
+      const styleTag = document.createElement("style");
+      styleTag.innerHTML = `
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+        body { font-family: 'Inter', sans-serif; }
+        ${tailwindStyles}
+      `;
+      document.body.appendChild(styleTag);
+      document.body.appendChild(clone);
+
+      // Perform the style stripping on the attached clone
+      sanitizeElement(clone);
 
       const opt = {
         margin: 10,
         filename: 'my-cv.pdf',
         image: { type: 'jpeg', quality: 0.95 },
         html2canvas: { 
-          scale: 1.5, 
+          scale: 1.5,
           useCORS: true, 
           letterRendering: true,
-          logging: true,
-          onclone: (clonedDoc: Document) => {
-            const elements = clonedDoc.getElementsByTagName('*');
-            for (let i = 0; i < elements.length; i++) {
-              const el = elements[i] as HTMLElement;
-              const style = window.getComputedStyle(el);
-              
-              // Force conversion of oklch/oklab to standard RGB if detected in computed styles
-              // Although getComputedStyle usually returns rgb/rgba in most browsers, 
-              // some environments might still pass through the raw Level 4 color values.
-              if (style.color && (style.color.includes('oklch') || style.color.includes('oklab'))) {
-                el.style.color = '#333333'; // Safe fallback
-              }
-              if (style.backgroundColor && (style.backgroundColor.includes('oklch') || style.backgroundColor.includes('oklab'))) {
-                el.style.backgroundColor = '#ffffff'; // Safe fallback
-              }
-            }
-          }
+          logging: false // Disabled as requested
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
 
-      // 3. Async Execution with Promise chain
-      html2pdf().from(element).set(opt).save()
+      // 3. The Capture: Generate & Save from the sanitized clone
+      html2pdf().from(clone).set(opt).save()
         .then(() => {
-          console.log("PDF generated successfully!");
-          if (document.body.contains(tempContainer)) {
-            document.body.removeChild(tempContainer);
-          }
+          console.log("PDF generated successfully via sanitized clone!");
+          // Cleanup
+          document.body.removeChild(clone);
+          document.body.removeChild(styleTag);
           setIsDownloading(false);
         })
         .catch((err: any) => {
           console.error("PDF generation failed:", err);
-          alert("Failed to generate PDF. Please try again.");
-          if (document.body.contains(tempContainer)) {
-            document.body.removeChild(tempContainer);
-          }
+          alert("Browser memory limit reached. Try a different browser or less data.");
+          // Cleanup
+          if (document.body.contains(clone)) document.body.removeChild(clone);
+          if (document.body.contains(styleTag)) document.body.removeChild(styleTag);
           setIsDownloading(false);
         });
 
-    } catch (error) {
-      console.error("PDF generation failed:", error);
-      alert("Failed to generate PDF. Please try again.");
+    } catch (error: any) {
+      console.error("Critical PDF Failure:", error);
+      alert("Browser memory limit reached. Try a different browser or less data.");
       setIsDownloading(false);
     }
   };
