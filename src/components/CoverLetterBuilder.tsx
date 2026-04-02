@@ -40,7 +40,7 @@ Smart Content Generation (Cover Letter):
 - Paragraph 2: Core achievements and why they are a perfect fit based on: ${formData.experience}.
 - Paragraph 3: Closing call to action and enthusiasm.
 
-Strictly use Tailwind CSS classes. No broken symbols. Ensure the ${primaryColor} color is applied to all accents, icons, and buttons. 
+Strictly use Tailwind CSS with EXPLICIT HEX colors (e.g. text-[#123456], bg-[#ffffff]). No oklab/oklch functions. Ensure the ${primaryColor} color is applied using its HEX equivalent.
 Return ONLY clean, responsive HTML contained within a single <div>. No markdown code blocks.
 
 User Data:
@@ -50,7 +50,7 @@ User Data:
 - Hiring Manager: ${formData.hiringManager}
 - Experience Highlight: ${formData.experience}
 - Motivation Statement: ${formData.motivation}
-- Contact: ${formData.email} | ${formData.phone}`;
+- Contact: ${formData.email ? formData.email + " | " : ""}${formData.phone}`;
 
       const res = await fetch("/api/generate", {
         method: "POST",

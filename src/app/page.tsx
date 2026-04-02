@@ -85,10 +85,27 @@ export default function Home() {
         filename: 'my-cv.pdf',
         image: { type: 'jpeg', quality: 0.95 },
         html2canvas: { 
-          scale: 1.5, // Lower scale to prevent freezing
+          scale: 1.5, 
           useCORS: true, 
           letterRendering: true,
-          logging: true // Enable logging to see errors in console
+          logging: true,
+          onclone: (clonedDoc: Document) => {
+            const elements = clonedDoc.getElementsByTagName('*');
+            for (let i = 0; i < elements.length; i++) {
+              const el = elements[i] as HTMLElement;
+              const style = window.getComputedStyle(el);
+              
+              // Force conversion of oklch/oklab to standard RGB if detected in computed styles
+              // Although getComputedStyle usually returns rgb/rgba in most browsers, 
+              // some environments might still pass through the raw Level 4 color values.
+              if (style.color && (style.color.includes('oklch') || style.color.includes('oklab'))) {
+                el.style.color = '#333333'; // Safe fallback
+              }
+              if (style.backgroundColor && (style.backgroundColor.includes('oklch') || style.backgroundColor.includes('oklab'))) {
+                el.style.backgroundColor = '#ffffff'; // Safe fallback
+              }
+            }
+          }
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };

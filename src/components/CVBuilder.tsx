@@ -55,17 +55,18 @@ Smart Content Generation (Academic CV):
 - For CV: Transform raw education into formal academic credentials.
 - Publications should be formatted in standard academic style (e.g., APA/MLA) if possible.
 
-Strictly use Tailwind CSS classes. No broken symbols. Ensure the ${primaryColor} color is applied to all accents, icons, and progress bars. 
+Strictly use Tailwind CSS with EXPLICIT HEX colors (e.g. text-[#123456], bg-[#ffffff]). No oklab/oklch functions. No broken symbols.
 Return ONLY clean, responsive HTML contained within a single <div>. No markdown code blocks.
 
 ${profileImage ? `CRITICAL RULE for PROFILE PHOTO:
-The user has provided a profile photo. You MUST include this exact HTML element in the top-left or top-right of the resume header or sidebar (depending on the layout):
-<img src="${profileImage}" style="width: 120px; height: 120px; object-fit: cover; border-radius: 50%;" alt="Profile Photo" />` : ''}
+The user has provided a profile photo. You MUST include this exact HTML element:
+<img src="${profileImage}" style="width: 120px; height: 120px; object-fit: cover; border-radius: 50%;" alt="Profile Photo" />` : 
+`<!-- Use https://placehold.co/120?text=Academic+Photo if you need a placeholder image -->`}
 
 User Data:
 - Name: ${formData.name}
 - Academic Title: ${formData.title}
-- Contact: ${formData.email} | ${formData.phone} | ${formData.location}
+- Contact: ${formData.email ? formData.email + " | " : ""}${formData.phone ? formData.phone + " | " : ""}${formData.location}
 - Professional Profile: ${formData.summary}
 - Education History: ${formData.education}
 - Publications & Research: ${formData.publications}
