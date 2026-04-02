@@ -64,3 +64,24 @@ body {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  /* Target the main CV container for high-quality browser printing */
+  #cv-preview-container, #cv-preview-container * {
+    visibility: visible;
+  }
+  #cv-preview-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    background-color: white !important;
+    color: black !important;
+  }
+}

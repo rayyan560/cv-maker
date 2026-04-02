@@ -15,7 +15,6 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(false); // Mobile: Toggle between form and preview
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   
   // Customization state
@@ -31,119 +30,11 @@ export default function Home() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const downloadPDF = async () => {
-    // 1. Client-Side Only Check
-    if (typeof window === "undefined" || !previewData || isDownloading) return;
+  const downloadPDF = () => {
+    if (typeof window === "undefined" || !previewData) return;
     
-    setIsDownloading(true);
-    console.log("Starting PDF generation with deep-clean strategy...");
-    
-    // Deep Clean Function: Force HEX/RGB over modern color functions
-    const sanitizeElement = (root: HTMLElement) => {
-      const allElements = [root, ...Array.from(root.getElementsByTagName("*"))] as HTMLElement[];
-      allElements.forEach(el => {
-        const style = window.getComputedStyle(el);
-        
-        // Sanitize Color
-        if (style.color && (style.color.includes("oklch") || style.color.includes("oklab"))) {
-          el.style.color = "#1e293b"; // Fallback to safe dark slate
-        }
-        
-        // Sanitize Background
-        if (style.backgroundColor && (style.backgroundColor.includes("oklch") || style.backgroundColor.includes("oklab"))) {
-          el.style.backgroundColor = "#ffffff"; // Fallback to white
-        }
-
-        // Sanitize Borders
-        if (style.borderColor && (style.borderColor.includes("oklch") || style.borderColor.includes("oklab"))) {
-          el.style.borderColor = "#e2e8f0"; // Fallback to light slate
-        }
-
-        // Sanitize SVG Fill/Stroke
-        if (style.fill && (style.fill.includes("oklch") || style.fill.includes("oklab"))) {
-          el.style.fill = "currentColor";
-        }
-      });
-    };
-
-    try {
-      // Dynamic import of html2pdf.js
-      const html2pdfModule = await import("html2pdf.js");
-      const html2pdf = html2pdfModule.default || html2pdfModule;
-
-      // Small delay for UI state sync
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const iframeDoc = iframeRef.current?.contentDocument;
-      const originalContainer = iframeDoc?.getElementById("cv-preview-container");
-      
-      if (!originalContainer) {
-        alert("CV container element not found for download!");
-        setIsDownloading(false);
-        return;
-      }
-
-      // 2. Clone Strategy: Deep Clone to avoid modifying the original preview
-      const clone = originalContainer.cloneNode(true) as HTMLElement;
-      
-      // Setup the clone inside the main document body for proper style computation
-      clone.id = "cv-pdf-clone";
-      clone.style.position = "absolute";
-      clone.style.left = "-9999px";
-      clone.style.top = "-9999px";
-      clone.style.width = "800px";
-      clone.style.backgroundColor = "#ffffff";
-      
-      // Transfer styles from iframe (Tailwind) to the clone
-      const tailwindStyles = iframeDoc?.querySelector('style')?.innerHTML || '';
-      const styleTag = document.createElement("style");
-      styleTag.innerHTML = `
-        * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
-        body { font-family: 'Inter', sans-serif; }
-        ${tailwindStyles}
-      `;
-      document.body.appendChild(styleTag);
-      document.body.appendChild(clone);
-
-      // Perform the style stripping on the attached clone
-      sanitizeElement(clone);
-
-      const opt = {
-        margin: 10,
-        filename: 'my-cv.pdf',
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { 
-          scale: 1.5,
-          useCORS: true, 
-          letterRendering: true,
-          logging: false // Disabled as requested
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
-      };
-
-      // 3. The Capture: Generate & Save from the sanitized clone
-      html2pdf().from(clone).set(opt).save()
-        .then(() => {
-          console.log("PDF generated successfully via sanitized clone!");
-          // Cleanup
-          document.body.removeChild(clone);
-          document.body.removeChild(styleTag);
-          setIsDownloading(false);
-        })
-        .catch((err: any) => {
-          console.error("PDF generation failed:", err);
-          alert("Browser memory limit reached. Try a different browser or less data.");
-          // Cleanup
-          if (document.body.contains(clone)) document.body.removeChild(clone);
-          if (document.body.contains(styleTag)) document.body.removeChild(styleTag);
-          setIsDownloading(false);
-        });
-
-    } catch (error: any) {
-      console.error("Critical PDF Failure:", error);
-      alert("Browser memory limit reached. Try a different browser or less data.");
-      setIsDownloading(false);
-    }
+    // Switch to native browser print (the most bulletproof method)
+    window.print();
   };
 
   return (
@@ -176,10 +67,9 @@ export default function Home() {
           {previewData && (
             <button 
               onClick={downloadPDF}
-              disabled={isDownloading}
-              className="p-2 bg-primary/20 text-primary rounded-lg disabled:opacity-50"
+              className="p-2 bg-primary/20 text-primary rounded-lg"
             >
-              {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+              <Download className="w-5 h-5" />
             </button>
           )}
         </div>
@@ -355,12 +245,12 @@ export default function Home() {
                 
                 <button 
                   onClick={downloadPDF}
-                  disabled={!previewData || isDownloading}
-                  className="group px-6 py-2.5 bg-gradient-to-r from-primary to-indigo-600 rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed text-white"
+                  disabled={!previewData}
+                  className="group px-6 py-2.5 bg-gradient-to-r from-primary to-indigo-600 rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 text-white"
                 >
-                  {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  <Download className="w-4 h-4" />
                   <span className="text-sm font-bold tracking-wide uppercase">
-                    {isDownloading ? "Processing..." : "Download PDF"}
+                    Download PDF
                   </span>
                 </button>
               </div>
@@ -442,6 +332,13 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Hidden Print-Only Container (Native Browser Print Bridge) */}
+      <div 
+        id="cv-preview-container" 
+        className="hidden print:block fixed inset-0 z-[9999] bg-white text-black"
+        dangerouslySetInnerHTML={{ __html: previewData }}
+      />
     </div>
   );
 }
