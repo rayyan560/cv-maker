@@ -370,13 +370,10 @@ export default function Home() {
                         </script>
                         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
                         <style>
-                          /* Nuclear Style Override: Kill modern colors globally */
                           * {
                             color-scheme: light !important;
                             --tw-oklab: none !important;
                             --tw-oklch: none !important;
-                            transition: none !important;
-                            border-color: #e5e7eb !important;
                           }
                           body { font-family: 'Inter', sans-serif; overflow-x: hidden; background-color: white; }
                           .sidebar-column { height: 100vh; }
