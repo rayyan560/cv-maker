@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Loader2, Sparkles, User, GraduationCap, BookOpen, Quote, Mail, Phone, MapPin } from "lucide-react";
+import { Loader2, Sparkles, User, GraduationCap, BookOpen, Quote, Mail, Phone, MapPin, Camera, X } from "lucide-react";
 
 export default function CVBuilder({ setPreviewData, setIsGenerating, customization }: any) {
   const [loading, setLoading] = useState(false);
@@ -16,6 +16,20 @@ export default function CVBuilder({ setPreviewData, setIsGenerating, customizati
     experience: "",
     skills: "",
   });
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setProfileImage(url);
+    }
+  };
+
+  const removeImage = () => {
+    if (profileImage) URL.revokeObjectURL(profileImage);
+    setProfileImage(null);
+  };
 
   const generateWithAI = async () => {
     if (!formData.name) return alert("Please enter your name");
@@ -43,6 +57,10 @@ Smart Content Generation (Academic CV):
 
 Strictly use Tailwind CSS classes. No broken symbols. Ensure the ${primaryColor} color is applied to all accents, icons, and progress bars. 
 Return ONLY clean, responsive HTML contained within a single <div>. No markdown code blocks.
+
+${profileImage ? `CRITICAL RULE for PROFILE PHOTO:
+The user has provided a profile photo. You MUST include this exact HTML element in the top-left or top-right of the resume header or sidebar (depending on the layout):
+<img src="${profileImage}" style="width: 120px; height: 120px; object-fit: cover; border-radius: 50%;" alt="Profile Photo" />` : ''}
 
 User Data:
 - Name: ${formData.name}
@@ -74,6 +92,30 @@ User Data:
   return (
     <div className="flex flex-col gap-6 w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="space-y-4">
+        {/* Profile Photo Upload */}
+        <div className="flex justify-center pb-2">
+          <div className="relative group">
+            {profileImage ? (
+              <div className="relative">
+                <img src={profileImage} alt="Preview" className="w-24 h-24 rounded-full object-cover border-4 border-slate-800 shadow-xl" />
+                <button 
+                  onClick={removeImage}
+                  className="absolute bottom-0 right-0 bg-rose-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                  title="Remove Photo"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className="cursor-pointer flex flex-col items-center justify-center w-24 h-24 rounded-full bg-slate-800/80 border border-white/10 hover:border-primary/50 transition-all shadow-xl group-hover:bg-slate-800">
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                <Camera className="w-7 h-7 text-slate-400 group-hover:text-primary transition-colors mb-1 mt-1" />
+                <span className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Photo</span>
+              </label>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Full Name</label>

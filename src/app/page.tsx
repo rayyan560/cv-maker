@@ -33,7 +33,7 @@ export default function Home() {
 
   const downloadPDF = async () => {
     // 1. Client-Side Only Check
-    if (typeof window === "undefined" || !previewData) return;
+    if (typeof window === "undefined" || !previewData || isDownloading) return;
     
     setIsDownloading(true);
     
@@ -42,26 +42,48 @@ export default function Home() {
       const html2pdfModule = await import("html2pdf.js");
       const html2pdf = html2pdfModule.default || html2pdfModule;
 
-      // 1. Target Container: Get cv-preview-container from iframe
+      // 2. Heavy-Duty Async Fix: Give UI time to update "Generating PDF..." state
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       const iframeDoc = iframeRef.current?.contentDocument;
       if (!iframeDoc) throw new Error("Iframe not accessible");
-      const element = iframeDoc.getElementById("cv-preview-container");
-      if (!element) throw new Error("cv-preview-container not found");
 
-      // 3. Heavy-Duty Async Fix: Give UI time to update "Generating PDF..." state
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Extract generated compiled styles from Tailwind CDN in iframe
+      const tailwindStyles = iframeDoc.querySelector('style[id="tailwind-cdn"]')?.innerHTML || '';
+      
+      // Create a temporary container in the MAIN document to avoid iframe freeze bugs
+      const tempContainer = document.createElement("div");
+      tempContainer.style.position = "absolute";
+      tempContainer.style.left = "-9999px";
+      tempContainer.style.top = "-9999px";
+      tempContainer.style.width = "800px"; // standard A4 width approx
+      tempContainer.style.backgroundColor = "white";
+      
+      tempContainer.innerHTML = `
+        <style>
+          body { font-family: 'Inter', sans-serif; }
+          * { border-color: #e5e7eb; }
+          ${tailwindStyles}
+        </style>
+        <div style="padding: 20px;">
+          ${previewData}
+        </div>
+      `;
+      document.body.appendChild(tempContainer);
 
-      // 2. HTML2PDF Config (The Sweet Spot)
       const opt = {
-        margin: 10,
-        filename: 'my-cv.pdf',
-        image: { type: 'jpeg', quality: 0.95 }, 
+        margin: [10, 0, 10, 0],
+        filename: 'my-professional-document.pdf',
+        image: { type: 'jpeg', quality: 0.98 }, 
         html2canvas: { scale: 2.0, useCORS: true, logging: false }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
 
       // Generate & Save PDF safely without crashing
-      await html2pdf().from(element).set(opt).save();
+      await html2pdf().from(tempContainer).set(opt).save();
+
+      // Cleanup
+      document.body.removeChild(tempContainer);
 
     } catch (error) {
       console.error("PDF generation failed:", error);
@@ -320,6 +342,12 @@ export default function Home() {
                           body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
                           .sidebar-column { height: 100vh; }
                           * { border-color: #e5e7eb; transition: all 0.3s ease; }
+                          
+                          @media print {
+                            @page { margin: 0; size: auto; }
+                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
+                            #cv-preview-container { padding: 0 !important; width: 100% !important; margin: 0 !important; box-shadow: none !important; border: none !important; }
+                          }
                         </style>
                       </head>
                       <body class="bg-white">

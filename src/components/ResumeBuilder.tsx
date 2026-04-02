@@ -88,6 +88,30 @@ User Data:
   return (
     <div className="flex flex-col gap-6 w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="space-y-4">
+        {/* Profile Photo Upload */}
+        <div className="flex justify-center pb-2">
+          <div className="relative group">
+            {profileImage ? (
+              <div className="relative">
+                <img src={profileImage} alt="Preview" className="w-24 h-24 rounded-full object-cover border-4 border-slate-800 shadow-xl" />
+                <button 
+                  onClick={removeImage}
+                  className="absolute bottom-0 right-0 bg-rose-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                  title="Remove Photo"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className="cursor-pointer flex flex-col items-center justify-center w-24 h-24 rounded-full bg-slate-800/80 border border-white/10 hover:border-primary/50 transition-all shadow-xl group-hover:bg-slate-800">
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                <Camera className="w-7 h-7 text-slate-400 group-hover:text-primary transition-colors mb-1 mt-1" />
+                <span className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Photo</span>
+              </label>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Full Name</label>
@@ -111,34 +135,6 @@ User Data:
                 className="w-full bg-slate-800/50 border border-white/5 p-3 pl-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 text-white placeholder:text-slate-600 transition-all"
                 onChange={(e) => setFormData({...formData, title: e.target.value})}
               />
-            </div>
-          </div>
-        </div>
-
-        {/* Profile Photo Upload */}
-        <div className="space-y-2">
-          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Profile Photo (Optional)</label>
-          <div className="flex items-center gap-4">
-            {profileImage ? (
-              <div className="relative group">
-                <img src={profileImage} alt="Preview" className="w-16 h-16 rounded-full object-cover border-2 border-primary/50" />
-                <button 
-                  onClick={removeImage}
-                  className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                  title="Remove Photo"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ) : (
-              <label className="cursor-pointer relative overflow-hidden group w-16 h-16 rounded-full border-2 border-dashed border-white/20 flex flex-col items-center justify-center hover:border-primary/50 hover:bg-white/5 transition-all">
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                <Camera className="w-5 h-5 text-slate-500 group-hover:text-primary transition-colors mb-1" />
-                <span className="text-[10px] text-slate-500 font-medium">Upload</span>
-              </label>
-            )}
-            <div className="text-xs text-slate-500 flex-1">
-              Add a professional photo to stand out. It will automatically be formatted perfectly in the chosen layout.
             </div>
           </div>
         </div>
