@@ -15,6 +15,7 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(false); // Mobile: Toggle between form and preview
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   
   // Customization state
@@ -30,11 +31,83 @@ export default function Home() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const downloadPDF = () => {
-    if (typeof window === "undefined" || !previewData) return;
+  const downloadPDF = async () => {
+    if (typeof window === "undefined" || !previewData || isDownloading) return;
     
-    // Switch to native browser print (the most bulletproof method)
-    window.print();
+    setIsDownloading(true);
+    console.log("Starting PDF generation with oklab-safe configuration...");
+
+    // 1. Sanitize Strategy: Strip modern colors from the clone
+    const sanitizeElement = (root: HTMLElement) => {
+      const allElements = [root, ...Array.from(root.getElementsByTagName("*"))] as HTMLElement[];
+      allElements.forEach(el => {
+        const style = window.getComputedStyle(el);
+        if (style.color && (style.color.includes("oklch") || style.color.includes("oklab"))) {
+          el.style.color = "#1e293b";
+        }
+        if (style.backgroundColor && (style.backgroundColor.includes("oklch") || style.backgroundColor.includes("oklab"))) {
+          el.style.backgroundColor = "#ffffff";
+        }
+        if (style.borderColor && (style.borderColor.includes("oklch") || style.borderColor.includes("oklab"))) {
+          el.style.borderColor = "#e2e8f0";
+        }
+      });
+    };
+
+    try {
+      // Dynamic import
+      const html2pdfModule = await import("html2pdf.js");
+      const html2pdf = html2pdfModule.default || html2pdfModule;
+
+      // 3. User Requested Safety Delay (500ms to ensure styling is settled)
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const iframeDoc = iframeRef.current?.contentDocument;
+      const originalContainer = iframeDoc?.getElementById("cv-preview-container");
+      
+      if (!originalContainer) {
+        // Fallback to window.print if iframe fails
+        window.print();
+        setIsDownloading(false);
+        return;
+      }
+
+      // 4. Clone and Sanitize
+      const clone = originalContainer.cloneNode(true) as HTMLElement;
+      clone.style.position = "absolute";
+      clone.style.left = "-9999px";
+      clone.style.width = "800px";
+      clone.style.backgroundColor = "white";
+      
+      const tailwindStyles = iframeDoc?.querySelector('style')?.innerHTML || '';
+      const styleTag = document.createElement("style");
+      styleTag.innerHTML = tailwindStyles;
+      document.body.appendChild(styleTag);
+      document.body.appendChild(clone);
+
+      sanitizeElement(clone);
+
+      const opt = {
+        margin: 10,
+        filename: 'my-cv.pdf',
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 1.5, useCORS: true, letterRendering: true, logging: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
+      };
+
+      await html2pdf().from(clone).set(opt).save();
+
+      // Cleanup
+      document.body.removeChild(clone);
+      document.body.removeChild(styleTag);
+
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      alert("PDF generation failed. Using browser print as fallback.");
+      window.print();
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -67,9 +140,10 @@ export default function Home() {
           {previewData && (
             <button 
               onClick={downloadPDF}
-              className="p-2 bg-primary/20 text-primary rounded-lg"
+              disabled={isDownloading}
+              className="p-2 bg-primary/20 text-primary rounded-lg disabled:opacity-50"
             >
-              <Download className="w-5 h-5" />
+              {isDownloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
             </button>
           )}
         </div>
@@ -245,12 +319,12 @@ export default function Home() {
                 
                 <button 
                   onClick={downloadPDF}
-                  disabled={!previewData}
-                  className="group px-6 py-2.5 bg-gradient-to-r from-primary to-indigo-600 rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 text-white"
+                  disabled={!previewData || isDownloading}
+                  className="group px-6 py-2.5 bg-gradient-to-r from-primary to-indigo-600 rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed text-white"
                 >
-                  <Download className="w-4 h-4" />
+                  {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                   <span className="text-sm font-bold tracking-wide uppercase">
-                    Download PDF
+                    {isDownloading ? "Processing..." : "Download PDF"}
                   </span>
                 </button>
               </div>
@@ -280,33 +354,42 @@ export default function Home() {
                       <head>
                         <meta charset="UTF-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <script src="https://cdn.tailwindcss.com/3.4.1"></script>
-                        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+                        <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
                         <script>
-                          // Force HEX over modern color functions for html2canvas compatibility
-                          window.addEventListener('load', () => {
-                            const styleTags = document.querySelectorAll('style');
-                            styleTags.forEach(tag => {
-                              // Replace oklch/oklab/hwb/etc with a safe fallback color if they appear in any dynamically generated styles
-                              tag.innerHTML = tag.innerHTML.replace(/oklch\([^)]+\)/g, '#1e293b');
-                              tag.innerHTML = tag.innerHTML.replace(/oklab\([^)]+\)/g, '#1e293b');
-                            });
-                          });
+                          tailwind.config = {
+                            theme: {
+                              extend: {
+                                colors: {
+                                  // Force standard HEX colors for everything to avoid oklch
+                                  primary: '#3b82f6',
+                                  secondary: '#1e293b',
+                                }
+                              }
+                            }
+                          }
                         </script>
+                        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
                         <style>
-                          body { font-family: 'Inter', sans-serif; overflow-x: hidden; background-color: #ffffff; color: #1e293b; }
+                          /* Nuclear Style Override: Kill modern colors globally */
+                          * {
+                            color-scheme: light !important;
+                            --tw-oklab: none !important;
+                            --tw-oklch: none !important;
+                            transition: none !important;
+                            border-color: #e5e7eb !important;
+                          }
+                          body { font-family: 'Inter', sans-serif; overflow-x: hidden; background-color: white; }
                           .sidebar-column { height: 100vh; }
-                          * { border-color: #e5e7eb !important; transition: none !important; }
                           
                           @media print {
                             @page { margin: 0; size: auto; }
-                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; background: #fff !important; }
+                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
                             #cv-preview-container { padding: 0 !important; width: 100% !important; margin: 0 !important; box-shadow: none !important; border: none !important; }
                           }
                         </style>
                       </head>
                       <body class="bg-white">
-                        <div id="cv-preview-container" style="min-height: 100vh; padding: 1px; background-color: #ffffff;">
+                        <div id="cv-preview-container" style="min-height: 100vh; padding: 1px; background-color: white;">
                           ${previewData}
                         </div>
                       </body>
